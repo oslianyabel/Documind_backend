@@ -1,0 +1,32 @@
+# http client
+requests
+httpx
+
+# AI
+openai
+
+# Env
+python-dotenv
+
+# Logs
+rich
+python-json-logger
+asgi-correlation-id
+
+# Dev
+ruff
+isort
+
+# Web server
+fastapi
+uvicorn[standard]
+
+# Database
+sqlalchemy
+databases[asyncpg]
+psycopg2
+
+# files
+pypdf2
+python-docx
+pandas
