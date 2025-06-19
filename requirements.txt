@@ -1,32 +1,49 @@
-# http client
-requests
-httpx
+# API
+fastapi[standard]
+uvicorn[standard]
+
+# env
+python-dotenv
+
+# DB
+sqlalchemy
+psycopg2
+databases[aiosqlite] # async
+databases[asyncpg] # async
+pgvector
+
+# logs
+rich
+asgi-correlation-id
+python-json-logger
 
 # AI
 openai
 
-# Env
-python-dotenv
+# Security
+python-jose
+python-multipart
+passlib[bcrypt]
 
-# Logs
-rich
-python-json-logger
-asgi-correlation-id
+# validations
+pydantic-settings
+pydantic[email]
 
-# Dev
+# test
+httpx
+pytest
+pytest-mock
+
+# dev
 ruff
 isort
 
-# Web server
-fastapi
-uvicorn[standard]
-
-# Database
-sqlalchemy
-databases[asyncpg]
-psycopg2
+# email
+aiosmtplib
 
 # files
-pypdf2
-python-docx
-pandas
+aiofiles
+b2sdk
+
+# Sentry
+sentry-sdk[fastapi]

@@ -50,7 +50,7 @@ def configure_logging() -> None:
             },
             "loggers": {
                 "waitress": {"handlers": ["default"], "level": "INFO"},
-                "flask": {
+                "gunicorn": {
                     "handlers": ["default"],
                     "level": "WARNING",
                 },

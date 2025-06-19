@@ -1,4 +1,8 @@
-venv/
-static/
 .env
 __pycache__/
+venv/
+temp_uploads/
+command.txt
+records*.log
+notas.txt
+*.db

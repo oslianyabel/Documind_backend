@@ -1,15 +1,56 @@
-import os
 import logging
+from functools import lru_cache
+from typing import Optional
 
-from dotenv import load_dotenv
-from openai import OpenAI
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from logging_conf import configure_logging
 
 configure_logging()
 logger = logging.getLogger("app")
 
-load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+class BaseConfig(BaseSettings):
+    ENV_STATE: Optional[str] = None
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+
+class GlobalConfig(BaseConfig):
+    DATABASE_URL: Optional[str] = None
+
+    EMAIL: Optional[str] = None
+    EMAIL_PASSWORD: Optional[str] = None
+    EMAIL_HOST: Optional[str] = None
+    ADMIN_EMAIL: Optional[str] = None
+
+    B2_KEY_ID: Optional[str] = None
+    B2_APPLICATION_KEY: Optional[str] = None
+    B2_BUCKET_NAME: Optional[str] = None
+
+    SECRET_KEY: Optional[str] = None
+    SENTRY_DSN: Optional[str] = None
+
+
+class DevConfig(GlobalConfig):
+    model_config = SettingsConfigDict(env_prefix="DEV_")
+
+
+class ProdConfig(GlobalConfig):
+    model_config = SettingsConfigDict(env_prefix="PROD_")
+
+
+@lru_cache
+def get_config(env_state: str):
+    configs = {
+        "dev": DevConfig,
+        "prod": ProdConfig,
+    }
+    return configs[env_state]()
+
+
+config = get_config(BaseConfig().ENV_STATE)
+
+
+if __name__ == "__main__":
+    logger.info(config)
