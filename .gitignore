@@ -4,5 +4,7 @@ venv/
 temp_uploads/
 command.txt
 records*.log
-notas.txt
+notes.txt
 *.db
+libros/
+media/

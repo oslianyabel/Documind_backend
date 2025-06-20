@@ -19,6 +19,7 @@ python-json-logger
 
 # AI
 openai
+transformers
 
 # Security
 python-jose
@@ -47,3 +48,12 @@ b2sdk
 
 # Sentry
 sentry-sdk[fastapi]
+
+# Docs
+pdfminer.six
+docx2txt
+
+# vector processing
+numpy
+scikit-learn
+nltk

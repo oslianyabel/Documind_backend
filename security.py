@@ -35,14 +35,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(email: str):
     logger.info("Create access token")
-    expire_date = datetime.now(UTC) + timedelta(minutes=30)
+    expire_date = datetime.now(UTC) + timedelta(minutes=60*24)
     data = {"sub": email, "exp": expire_date, "type": "access"}
     return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def create_confirmation_token(email: str):
     logger.info("Create confirmation token")
-    expire_date = datetime.now(UTC) + timedelta(minutes=1440)
+    expire_date = datetime.now(UTC) + timedelta(minutes=60*24*7)
     data = {"sub": email, "exp": expire_date, "type": "confirmation"}
     return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
 

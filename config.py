@@ -1,6 +1,7 @@
 import logging
 from functools import lru_cache
 from typing import Optional
+from openai import AsyncOpenAI
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -31,6 +32,12 @@ class GlobalConfig(BaseConfig):
     SECRET_KEY: Optional[str] = None
     SENTRY_DSN: Optional[str] = None
 
+    DOCUMENT_PATH: Optional[str] = None
+
+    DOMAIN: Optional[str] = None
+
+    OPENAI_API_KEY: Optional[str] = None
+
 
 class DevConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="DEV_")
@@ -50,6 +57,7 @@ def get_config(env_state: str):
 
 
 config = get_config(BaseConfig().ENV_STATE)
+openai_client = AsyncOpenAI(api_key=config.OPENAI_API_KEY)
 
 
 if __name__ == "__main__":
