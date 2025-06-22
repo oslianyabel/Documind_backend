@@ -1,44 +1,36 @@
 import re
 import subprocess
 
+import PyPDF2
+from docx import Document
 from fastapi import HTTPException, status
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from config import openai_client
+from config import logger, openai_client
 
 
-async def get_embedding(text: str, model="text-embedding-3-small"):
+async def get_embedding(
+    text: str, model: str = "text-embedding-3-small"
+) -> list[float]:
     text = text.replace("\n", " ")
     response = await openai_client.embeddings.create(input=[text], model=model)
     return response.data[0].embedding
 
 
-def extract_text_from_doc(doc_path):
-    result = subprocess.run(["antiword", doc_path], capture_output=True, text=True)
-    if result.returncode == 0:
-        return result.stdout
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No antiword installed",
-        )
-
-
 def preprocess_text(text):
-    # Convertir a minúsculas
     text = text.lower()
-    # Eliminar caracteres especiales
+
     text = re.sub(r"[^\w\s]", "", text)
-    # Tokenización
+
     tokens = word_tokenize(text)
-    # Eliminar stopwords
+
     stop_words = set(stopwords.words("spanish") + stopwords.words("english"))
     tokens = [word for word in tokens if word not in stop_words]
-    # Convertir la lista de tokens de nuevo a texto
-    return " ".join(tokens)  # ← Ahora devuelve un string
+
+    return " ".join(tokens)
 
 
 def create_search_index(document_text):
@@ -60,11 +52,10 @@ def find_most_relevant_chunk(query, vectorizer, tfidf_matrix, chunks):
     return chunks[most_similar_idx], similarities[0][most_similar_idx], most_similar_idx
 
 
-def find_answer_in_document(text, query):
+def find_answer_in_document(text: str, query: str):
     # Crear índice de búsqueda
     vectorizer, tfidf_matrix, chunks = create_search_index(text)
 
-    # Buscar el fragmento más relevante
     most_relevant_chunk, similarity_score, most_similar_idx = find_most_relevant_chunk(
         query, vectorizer, tfidf_matrix, chunks
     )
@@ -87,6 +78,47 @@ def get_context(full_text, answer_chunk, window_size=2):
 
     except ValueError:
         return answer_chunk
+
+
+def extract_text_from_pdf(file_path):
+    text = ""
+    with open(file_path, "rb") as file:
+        reader = PyPDF2.PdfReader(file)
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
+    return text
+
+
+def extract_text_from_docx(file_path):
+    doc = Document(file_path)
+    return "\n".join([para.text for para in doc.paragraphs])
+
+
+def extract_text_from_doc(doc_path):
+    result = subprocess.run(["antiword", doc_path], capture_output=True, text=True)
+    if result.returncode == 0:
+        return result.stdout
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No antiword installed",
+        )
+
+
+def clean_text(text: str) -> str:
+    """Remove null bytes and ensure UTF-8 encoding"""
+    return text.replace("\x00", "").encode("utf-8", errors="ignore").decode("utf-8")
+
+
+async def get_page_embedding(idx: int, content: str):
+    logger.debug(
+        f"Getting embeddings from page or paragraph {idx} with {len(content)} characters"
+    )
+    return {
+        "page_number": idx,
+        "content": content,
+        "embeddings": await get_embedding(content[:2000]),
+    }
 
 
 if __name__ == "__main__":

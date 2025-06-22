@@ -13,8 +13,17 @@ document_table = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
     sqlalchemy.Column("name", sqlalchemy.String, nullable=False),
-    sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column("url", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("embeddings", sqlalchemy.ARRAY(sqlalchemy.Float)),
+)
+
+page_table = sqlalchemy.Table(
+    "pages",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("page_number", sqlalchemy.Integer, nullable=False),
+    sqlalchemy.Column("document_id", sqlalchemy.ForeignKey("documents.id"), nullable = False),
+    sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column("embeddings", sqlalchemy.ARRAY(sqlalchemy.Float)),
 )
 
@@ -33,7 +42,7 @@ query_table = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
     sqlalchemy.Column("query", sqlalchemy.String, nullable=False),
     sqlalchemy.Column("answer", sqlalchemy.String),
-    sqlalchemy.Column("page", sqlalchemy.Integer),
+    sqlalchemy.Column("page_number", sqlalchemy.Integer),
     sqlalchemy.Column(
         "document_id", sqlalchemy.ForeignKey("documents.id"), nullable=False
     ),

@@ -3,8 +3,14 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
-class Query(BaseModel):
-    body: str
+class UploadDocument(BaseModel):
+    detail: str
+    document_id: int
+    document_url: str
+
+
+class UserQuery(BaseModel):
+    content: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -21,11 +27,18 @@ class DocumentWithSimilarity(Document):
     similarity: float
 
 
-class SearchResult(BaseModel):
+class PageWithSimilarity(BaseModel):
     document_id: int
-    document_name: str
-    answer: Optional[str] = None
-    context: Optional[str] = None
-    paragraph: Optional[int] = None
+    page_number: int
+    similarity: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SearchResult(BaseModel):
+    query: str
+    answer: str
+    document_id: int
+    page_number: int
 
     model_config = ConfigDict(from_attributes=True)
