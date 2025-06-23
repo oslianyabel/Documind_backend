@@ -180,7 +180,8 @@ async def get_page_response(
         },
         {"role": "user", "content": user_query.content},  # type: ignore
     ]
-    ans = Completions().submit_message(messages)
+    llm = Completions()
+    ans = await llm.submit_message(messages)
 
     query_data = {
         "query": user_query.content,

@@ -1,7 +1,8 @@
+import asyncio
 import json
 import time
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from config import config, logger
 
@@ -15,7 +16,7 @@ class Completions:
         functions={},
         tool_choice="auto",
     ):
-        self.client = OpenAI(
+        self.client = AsyncOpenAI(
             api_key=config.OPENAI_API_KEY,
         )
         self.name = name
@@ -25,11 +26,11 @@ class Completions:
         self.tool_choice = tool_choice
         self.error_response = """Ha ocurrido un error ejecutando la herramienta {tool_name} con los argumentos {tool_args}"""
 
-    def submit_message(self, messages):
+    async def submit_message(self, messages):
         last_time = time.time()
         logger.info(f"Running {self.name} with {len(self.functions)} tools")
         while True:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 tools=self.json_tools,
@@ -42,8 +43,8 @@ class Completions:
             break
 
         ans = response.choices[0].message.content.strip()  # type: ignore
-        logger.info(f"{self.name}: {ans}")
         logger.debug(f"Performance de {self.name}: {time.time() - last_time}")
+        logger.debug(f"{self.name}: {ans}")
         return ans
 
     def run_tools(self, messages, response) -> None:
@@ -77,3 +78,20 @@ class Completions:
                     "content": function_response,
                 }
             )
+
+
+if __name__ == "__main__":
+
+    async def main():
+        messages = [
+            {
+                "role": "system",
+                "content": "Responde como una persona con trastorno obsesivo compulsivo con la filosofia",
+            },
+            {"role": "user", "content": "Hola, sabes programar?"},
+        ]
+
+        llm = Completions()
+        await llm.submit_message(messages)
+
+    asyncio.run(main())
