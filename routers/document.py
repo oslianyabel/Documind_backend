@@ -1,14 +1,9 @@
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated
 
-import asyncio
-import aiofiles
 import numpy
-import PyPDF2
-from docx import Document as DocxDocument
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -25,7 +20,7 @@ from models.document import (
 )
 from models.user import UserOut
 from security import get_current_user
-from utils import clean_text, get_embedding, get_page_embedding
+from utils import download_file, get_document_content, get_embedding
 
 router = APIRouter()
 UserDep = Annotated[UserOut, Depends(get_current_user)]
@@ -36,47 +31,9 @@ async def upload_document(file: UploadFile, current_user: UserDep) -> UploadDocu
     """
     Carga el documento y crea los embeddings en la base de datos
     """
-    CHUNK_SIZE = 1024 * 1024
-    process_list = []
-    pages: list
-    content = ""
-    file_path = Path(config.DOCUMENT_PATH) / file.filename  # type: ignore
-    async with aiofiles.open(file_path, "wb") as new_file:
-        while chunk := await file.read(CHUNK_SIZE):
-            await new_file.write(chunk)
+    file_path = await download_file(file)
 
-    if file.content_type == "application/pdf":
-        with open(file_path, "rb") as new_file:
-            reader = PyPDF2.PdfReader(new_file)
-            for idx, page in enumerate(reader.pages):
-                content_page = clean_text(page.extract_text())
-                if content_page:
-                    process_list.append(get_page_embedding(idx, content_page))
-                content += content_page + "\n"
-
-            if process_list:
-                pages = await asyncio.gather(*process_list)
-
-    elif (
-        file.content_type
-        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ):
-        doc = DocxDocument(file_path)  # type: ignore
-
-        for idx, para in enumerate(doc.paragraphs):
-            content_page = clean_text(para.text)
-            if content_page:
-                process_list.append(get_page_embedding(idx, content_page))
-            content += content_page + "\n"
-
-        if process_list:
-            pages = await asyncio.gather(*process_list)
-
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid Format File: {file.content_type} Must be .pdf or .docx",
-        )
+    content, pages = await get_document_content(file.content_type, file_path)
 
     data = {
         "name": file.filename,
@@ -97,6 +54,39 @@ async def upload_document(file: UploadFile, current_user: UserDep) -> UploadDocu
         detail="file upload successfully",
         document_id=id,
         document_url=data["url"],
+    )
+
+
+@router.get("/{document_id}", response_model=Document)
+async def get_document(document_id: int):
+    query = document_table.select().where(document_table.c.id == document_id)
+    document = await database.fetch_one(query)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    return document
+
+
+@router.get("/{document_id}/download")
+async def download_document(document_id: int) -> FileResponse:
+    query = document_table.select().where(document_table.c.id == document_id)
+    document = await database.fetch_one(query)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    path = document.url.replace(config.DOMAIN, "")  # type: ignore
+    if path.startswith("/"):
+        path = path[1:]
+
+    print(path)
+    file_path = Path(path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found on server")
+
+    return FileResponse(
+        file_path,
+        filename=document.name,  # type: ignore
+        headers={"Content-Disposition": f"attachment; filename={document.name}"},  # type: ignore
     )
 
 
@@ -133,39 +123,6 @@ async def get_relevant_documents(
     documents_with_similarity.sort(key=lambda doc: doc.similarity, reverse=True)
 
     return documents_with_similarity[:limit]
-
-
-@router.get("/{document_id}", response_model=Document)
-async def get_document(document_id: int):
-    query = document_table.select().where(document_table.c.id == document_id)
-    document = await database.fetch_one(query)
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    return document
-
-
-@router.get("/{document_id}/download")
-async def download_document(document_id: int) -> FileResponse:
-    query = document_table.select().where(document_table.c.id == document_id)
-    document = await database.fetch_one(query)
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    path = document.url.replace(config.DOMAIN, "")  # type: ignore
-    if path.startswith("/"):
-        path = path[1:]
-
-    print(path)
-    file_path = Path(path)
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found on server")
-
-    return FileResponse(
-        file_path,
-        filename=document.name,  # type: ignore
-        headers={"Content-Disposition": f"attachment; filename={document.name}"},  # type: ignore
-    )
 
 
 @router.post("/{document_id}/search")

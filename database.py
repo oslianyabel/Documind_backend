@@ -3,6 +3,7 @@ import asyncio
 import databases
 import sqlalchemy
 from sqlalchemy.sql import func
+# from sqlalchemy.dialects.postgresql import JSONB
 
 from config import config
 
@@ -24,7 +25,7 @@ page_table = sqlalchemy.Table(
     sqlalchemy.Column("page_number", sqlalchemy.Integer, nullable=False),
     sqlalchemy.Column("document_id", sqlalchemy.ForeignKey("documents.id"), nullable = False),
     sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
-    sqlalchemy.Column("embeddings", sqlalchemy.ARRAY(sqlalchemy.Float)),
+    sqlalchemy.Column("embeddings", sqlalchemy.ARRAY(sqlalchemy.Float)),  # sqlalchemy.dialects.postgresql.VECTOR(1536)
 )
 
 user_table = sqlalchemy.Table(
