@@ -52,7 +52,6 @@ sentry-sdk[fastapi]
 # Docs
 PyPDF2
 python-docx
-textract 
 
 # vector processing
 numpy

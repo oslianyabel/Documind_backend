@@ -48,7 +48,7 @@ class ProdConfig(GlobalConfig):
 
 
 @lru_cache
-def get_config(env_state: str):
+def get_config(env_state: str) -> GlobalConfig:
     configs = {
         "dev": DevConfig,
         "prod": ProdConfig,
@@ -61,4 +61,4 @@ openai_client = AsyncOpenAI(api_key=config.OPENAI_API_KEY)
 
 
 if __name__ == "__main__":
-    logger.info(config)
+    print(config)

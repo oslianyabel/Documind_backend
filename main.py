@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from routers.document import router as document_router
 from routers.user import router as user_router
+from routers.query import router as query_router
 
 sentry_sdk.init(
     dsn=config.SENTRY_DSN,
@@ -23,7 +24,7 @@ sentry_sdk.init(
 
 @asynccontextmanager
 async def lifespam(app: FastAPI):
-    await aiofiles.os.makedirs(config.DOCUMENT_PATH, exist_ok=True)
+    await aiofiles.os.makedirs(config.DOCUMENT_PATH, exist_ok=True) # type: ignore
     await database.connect()
     yield
     await database.disconnect()
@@ -33,5 +34,6 @@ app = FastAPI(lifespan=lifespam)
 app.add_middleware(CorrelationIdMiddleware)
 app.include_router(document_router, prefix="/document")
 app.include_router(user_router, prefix="/users")
+app.include_router(query_router, prefix="/query")
 app.mount("/media", StaticFiles(directory="media"), name="media")
 

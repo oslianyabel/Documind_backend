@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict
 
 
@@ -42,3 +40,7 @@ class SearchResult(BaseModel):
     page_number: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DeleteResponse(BaseModel):
+    detail: str

@@ -23,7 +23,7 @@ page_table = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
     sqlalchemy.Column("page_number", sqlalchemy.Integer, nullable=False),
-    sqlalchemy.Column("document_id", sqlalchemy.ForeignKey("documents.id"), nullable = False),
+    sqlalchemy.Column("document_id", sqlalchemy.ForeignKey("documents.id", ondelete="CASCADE"), nullable = False),
     sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
     sqlalchemy.Column("embeddings", sqlalchemy.ARRAY(sqlalchemy.Float)),  # sqlalchemy.dialects.postgresql.VECTOR(1536)
 )
@@ -45,18 +45,18 @@ query_table = sqlalchemy.Table(
     sqlalchemy.Column("answer", sqlalchemy.String),
     sqlalchemy.Column("page_number", sqlalchemy.Integer),
     sqlalchemy.Column(
-        "document_id", sqlalchemy.ForeignKey("documents.id"), nullable=False
+        "document_id", sqlalchemy.ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
     ),
     sqlalchemy.Column(
         "created_at", sqlalchemy.TIMESTAMP, nullable=False, server_default=func.now()
     ),
 )
 
-connect_args = {"check_same_thread": False} if "sqlite" in config.DATABASE_URL else {}
+connect_args = {"check_same_thread": False} if "sqlite" in config.DATABASE_URL else {} # type: ignore
 engine = sqlalchemy.create_engine(str(config.DATABASE_URL), connect_args=connect_args)
 
 metadata.create_all(engine)
-db_args = {"min_size": 1, "max_size": 3} if "postgres" in config.DATABASE_URL else {}
+db_args = {"min_size": 1, "max_size": 3} if "postgres" in config.DATABASE_URL else {} # type: ignore
 database = databases.Database(str(config.DATABASE_URL), force_rollback=False, **db_args)
 
 

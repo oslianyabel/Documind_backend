@@ -1,9 +1,10 @@
+import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import numpy
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -11,6 +12,7 @@ from completions import Completions
 from config import config, logger
 from database import database, document_table, page_table, query_table
 from models.document import (
+    DeleteResponse,
     Document,
     DocumentWithSimilarity,
     PageWithSimilarity,
@@ -23,11 +25,42 @@ from security import get_current_user
 from utils import download_file, get_document_content, get_embedding
 
 router = APIRouter()
-UserDep = Annotated[UserOut, Depends(get_current_user)]
+UserWithToken = Annotated[UserOut, Depends(get_current_user)]
+
+
+@router.get("/", response_model=list[Document])
+async def get_documents(limit: Optional[int] = None):
+    query = document_table.select()
+    documents = await database.fetch_all(query)
+    if limit:
+        return documents[:limit]
+
+    return documents
+
+
+@router.delete("/{document_id}", response_model=DeleteResponse)
+async def delete_document(document_id: int, current_user: UserWithToken):
+    query = document_table.select().where(document_table.c.id == document_id)
+    document = await database.fetch_one(query)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    path = Path(config.DOCUMENT_PATH) / document.name  # type: ignore
+    if path.exists():
+        os.remove(path)
+
+    query = document_table.delete().where(document_table.c.id == document_id)
+    await database.execute(query)
+
+    return {"detail": "File deleted successfully"}
 
 
 @router.post("/upload", status_code=201)
-async def upload_document(file: UploadFile, current_user: UserDep) -> UploadDocument:
+async def upload_document(
+    file: UploadFile, current_user: UserWithToken
+) -> UploadDocument:
     """
     Carga el documento y crea los embeddings en la base de datos
     """
@@ -43,10 +76,18 @@ async def upload_document(file: UploadFile, current_user: UserDep) -> UploadDocu
     query = document_table.insert().values(data)
     id = await database.execute(query)
 
-    for page in pages:  # type: ignore
-        page["document_id"] = id
-        query = page_table.insert().values(page)
+    try:
+        for page in pages:  # type: ignore
+            page["document_id"] = id
+            query = page_table.insert().values(page)
+            await database.execute(query)
+
+    except Exception as exc:
+        os.remove(file_path)
+        query = document_table.delete().where(document_table.c.id == id)
         await database.execute(query)
+
+        raise exc
 
     logger.info(f"Document {data['name']} with {len(pages)} pages was uploaded")  # type: ignore
 
@@ -74,12 +115,8 @@ async def download_document(document_id: int) -> FileResponse:
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    path = document.url.replace(config.DOMAIN, "")  # type: ignore
-    if path.startswith("/"):
-        path = path[1:]
+    file_path = Path(config.DOCUMENT_PATH) / document.name  # type: ignore = Path(config.DOCUMENT_PATH) / document.name # type: ignore
 
-    print(path)
-    file_path = Path(path)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found on server")
 
@@ -173,6 +210,12 @@ async def get_page_response(
     )
     page = await database.fetch_one(query)
 
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found")
+
+    if not page.content:  # type: ignore
+        raise HTTPException(status_code=404, detail="Page is empty")
+
     messages = [
         {
             "role": "system",
@@ -187,7 +230,7 @@ async def get_page_response(
         "query": user_query.content,
         "answer": ans,
         "document_id": document_id,
-        "page": page_number,
+        "page_number": page_number,
     }
     query = query_table.insert().values(query_data)
     await database.execute(query)

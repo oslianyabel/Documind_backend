@@ -28,7 +28,7 @@ class Completions:
 
     async def submit_message(self, messages):
         last_time = time.time()
-        logger.info(f"Running {self.name} with {len(self.functions)} tools")
+        logger.debug(f"Running {self.name} with {len(self.functions)} tools")
         while True:
             response = await self.client.chat.completions.create(
                 model=self.model,
