@@ -32,8 +32,8 @@ async def lifespam(app: FastAPI):
 
 app = FastAPI(lifespan=lifespam)
 app.add_middleware(CorrelationIdMiddleware)
-app.include_router(document_router, prefix="/document")
+app.include_router(document_router, prefix="/documents")
 app.include_router(user_router, prefix="/users")
-app.include_router(query_router, prefix="/query")
+app.include_router(query_router, prefix="/querys")
 app.mount("/media", StaticFiles(directory="media"), name="media")
 

@@ -52,6 +52,7 @@ sentry-sdk[fastapi]
 # Docs
 PyPDF2
 python-docx
+tqdm  # barra de progreso
 
 # vector processing
 numpy

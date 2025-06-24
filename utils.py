@@ -1,6 +1,8 @@
 import asyncio
 from enum import Enum
 from pathlib import Path
+from tqdm import tqdm
+from typing import Optional
 
 import aiofiles
 import PyPDF2
@@ -23,23 +25,31 @@ def clean_text(text: str) -> str:
     return text.replace("\x00", "").encode("utf-8", errors="ignore").decode("utf-8")
 
 
-async def get_page_embedding(idx: int, content: str):
+async def get_page_embedding(idx: int, content: str, pbar: Optional[tqdm] = None):
     logger.debug(
         f"Getting embeddings from page or paragraph {idx} with {len(content)} characters"
     )
-    return {
+    result = {
         "page_number": idx,
         "content": content,
         "embeddings": await get_embedding(content[:2000]),
     }
+    if pbar:
+        pbar.update(1)
+
+    return result
 
 
 async def download_file(file):
     CHUNK_SIZE = 1024 * 1024
     file_path = Path(config.DOCUMENT_PATH) / file.filename  # type: ignore
-    async with aiofiles.open(file_path, "wb") as new_file:
-        while chunk := await file.read(CHUNK_SIZE):
-            await new_file.write(chunk)
+    file_size = file.size
+    
+    with tqdm(total=file_size, unit='B', unit_scale=True, desc="Downloading file") as pbar:
+        async with aiofiles.open(file_path, "wb") as new_file:
+            while chunk := await file.read(CHUNK_SIZE):
+                await new_file.write(chunk)
+                pbar.update(len(chunk))
 
     return file_path
 
@@ -67,16 +77,20 @@ async def get_pdf_content(file_path):
     content = ""
     pages = []
     process_list = []
+
     with open(file_path, "rb") as new_file:
         reader = PyPDF2.PdfReader(new_file)
-        for idx, page in enumerate(reader.pages):
-            content_page = clean_text(page.extract_text())
-            if content_page:
-                process_list.append(get_page_embedding(idx, content_page))
-            content += content_page + "\n"
+        num_pages = len(reader.pages)
+        
+        with tqdm(total=num_pages, desc="Processing PDF pages") as pbar:
+            for idx, page in enumerate(reader.pages):
+                content_page = clean_text(page.extract_text())
+                if content_page:
+                    process_list.append(get_page_embedding(idx, content_page, pbar))
+                content += content_page + "\n"
 
-        if process_list:
-            pages = await asyncio.gather(*process_list)
+            if process_list:
+                pages = await asyncio.gather(*process_list)
 
     return content, pages
 
@@ -86,15 +100,19 @@ async def get_docx_content(file_path):
     pages = []
     process_list = []
     doc = DocxDocument(file_path)  # type: ignore
+    paragraphs = doc.paragraphs
+    num_paragraphs = len(paragraphs)
+    
+    with tqdm(total=num_paragraphs, desc="Processing DOCX paragraphs") as pbar:
+        for idx, para in enumerate(paragraphs):
+            content_page = clean_text(para.text)
+            if content_page:
+                process_list.append(get_page_embedding(idx, content_page, pbar))
+            content += content_page + "\n"
 
-    for idx, para in enumerate(doc.paragraphs):
-        content_page = clean_text(para.text)
-        if content_page:
-            process_list.append(get_page_embedding(idx, content_page))
-        content += content_page + "\n"
+        if process_list:
+            pages = await asyncio.gather(*process_list)
 
-    if process_list:
-        pages = await asyncio.gather(*process_list)
 
     return content, pages
 
