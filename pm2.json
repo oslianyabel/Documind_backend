@@ -1,0 +1,14 @@
+{
+  "apps": [
+      {
+          "name": "backend_documind",
+          "script": "uvicorn",
+          "args": "main:app --host 0.0.0.0 --port 3060",
+          "interpreter": "venv/bin/python",
+          "env": {
+              "ENVIRONMENT": "prod",
+              "PORT": 3060
+          }
+      }
+  ]
+}

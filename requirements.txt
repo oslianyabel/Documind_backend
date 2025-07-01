@@ -19,7 +19,7 @@ python-json-logger
 
 # AI
 openai
-transformers
+# transformers
 
 # Security
 python-jose
