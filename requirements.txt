@@ -7,7 +7,7 @@ python-dotenv
 
 # DB
 sqlalchemy
-psycopg2
+psycopg2-binary
 databases[aiosqlite] # async
 databases[asyncpg] # async
 pgvector
