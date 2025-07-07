@@ -14,8 +14,6 @@ from routers.user import router as user_router
 
 sentry_sdk.init(
     dsn=config.SENTRY_DSN,
-    # Add data like request headers and IP for users,
-    # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
     send_default_pii=True,
     traces_sample_rate=1.0,
     profiles_sample_rate=1.0,

@@ -34,6 +34,7 @@ async def get_page_embedding(idx: int, content: str, pbar: Optional[tqdm] = None
         "content": content,
         "embeddings": await get_embedding(content[:2000]),
     }
+
     if pbar:
         pbar.update(1)
 
@@ -120,6 +121,14 @@ async def get_docx_content(file_path):
 get_relevant_documents_query = """
     SELECT id, name, url, embeddings <=> :embedding AS similarity
     FROM documents
+    WHERE embeddings IS NOT NULL
+    ORDER BY similarity ASC
+    LIMIT :limit
+"""
+
+get_relevant_pages_query = """
+    SELECT id, page_number, document_id, content, embeddings <=> :embedding AS similarity
+    FROM pages
     WHERE embeddings IS NOT NULL
     ORDER BY similarity ASC
     LIMIT :limit

@@ -3,13 +3,13 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
 from databases.interfaces import Record
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from jose import ExpiredSignatureError, JWTError, jwt
 from passlib.context import CryptContext
 
 from config import config, logger
 from database import database, user_table
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
 
 SECRET_KEY = config.SECRET_KEY
 ALGORITHM = "HS256"
@@ -35,16 +35,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(email: str):
     logger.info("Create access token")
-    expire_date = datetime.now(UTC) + timedelta(minutes=60*24)
+    expire_date = datetime.now(UTC) + timedelta(minutes=60 * 24)
     data = {"sub": email, "exp": expire_date, "type": "access"}
-    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)  # type: ignore
 
 
 def create_confirmation_token(email: str):
     logger.info("Create confirmation token")
-    expire_date = datetime.now(UTC) + timedelta(minutes=60*24*7)
+    expire_date = datetime.now(UTC) + timedelta(minutes=60 * 24 * 7)
     data = {"sub": email, "exp": expire_date, "type": "confirmation"}
-    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)  # type: ignore
 
 
 async def get_user(email: str) -> Record | None:
@@ -73,7 +73,7 @@ def get_subject_for_token_type(
     token: str, type: Literal["access", "confirmation"]
 ) -> str:
     try:
-        payload = jwt.decode(token, key=SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, key=SECRET_KEY, algorithms=[ALGORITHM])  # type: ignore
 
     except ExpiredSignatureError as exc:
         raise create_credentials_exception("Token has expired") from exc

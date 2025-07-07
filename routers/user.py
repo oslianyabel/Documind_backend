@@ -35,6 +35,7 @@ async def register(user: UserIn, request: Request, background_tasks: BackgroundT
 
     token = create_confirmation_token(user.email)
     url = request.url_for("confirm_email", token=token)
+    logger.debug(url)
     background_tasks.add_task(send_confirmation_email, user.email, url)
 
     return {"detail": "User created. Please confirm your email"}
