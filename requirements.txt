@@ -52,6 +52,7 @@ sentry-sdk[fastapi]
 
 # Docs
 PyPDF2
+pycryptodome  # para manejar archivos PDF encriptados con AES
 python-docx
 tqdm  # barra de progreso
 

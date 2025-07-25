@@ -70,7 +70,15 @@ async def upload_documents(
         try:
             file_path = await download_file(file)
 
-            content, pages = await get_document_content(file.content_type, file_path)
+            try:
+                content, pages = await get_document_content(file.content_type, file_path)
+            except Exception as e:
+                if "PyCryptodome is required for AES algorithm" in str(e):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"El documento {file.filename} está encriptado y requiere PyCryptodome para su procesamiento"
+                    )
+                raise
 
             data = {
                 "name": file.filename,
@@ -100,6 +108,8 @@ async def upload_documents(
                 await database.execute(query)
                 raise exc
 
+        except HTTPException:
+            raise  # Re-lanza las HTTPException directamente
         except Exception as exc:
             logger.error(f"Error uploading file {file.filename}: {str(exc)}")
             results.append(UploadDocument(
