@@ -58,44 +58,58 @@ async def delete_document(document_id: int, current_user: UserWithToken):
 
 
 @router.post("/upload", status_code=201)
-async def upload_document(
-    file: UploadFile, current_user: UserWithToken
-) -> UploadDocument:
+async def upload_documents(
+    files: list[UploadFile], current_user: UserWithToken
+) -> list[UploadDocument]:
     """
-    Carga el documento y crea los embeddings en la base de datos
+    Carga múltiples documentos y crea los embeddings en la base de datos
     """
-    file_path = await download_file(file)
+    results = []
+    
+    for file in files:
+        try:
+            file_path = await download_file(file)
 
-    content, pages = await get_document_content(file.content_type, file_path)
+            content, pages = await get_document_content(file.content_type, file_path)
 
-    data = {
-        "name": file.filename,
-        "url": f"{config.DOMAIN}/{config.DOCUMENT_PATH}/{file.filename}",
-        "embeddings": await get_embedding(content[:2000]),
-    }
-    query = document_table.insert().values(data)
-    id = await database.execute(query)
+            data = {
+                "name": file.filename,
+                "url": f"{config.DOMAIN}/{config.DOCUMENT_PATH}/{file.filename}",
+                "embeddings": await get_embedding(content[:2000]),
+            }
+            query = document_table.insert().values(data)
+            id = await database.execute(query)
 
-    try:
-        for page in pages:  # type: ignore
-            page["document_id"] = id
-            query = page_table.insert().values(page)
-            await database.execute(query)
+            try:
+                for page in pages:  # type: ignore
+                    page["document_id"] = id
+                    query = page_table.insert().values(page)
+                    await database.execute(query)
 
-    except Exception as exc:
-        os.remove(file_path)
-        query = document_table.delete().where(document_table.c.id == id)
-        await database.execute(query)
+                logger.info(f"Document {data['name']} with {len(pages)} pages was uploaded")  # type: ignore
 
-        raise exc
+                results.append(UploadDocument(
+                    detail="file upload successfully",
+                    document_id=id,
+                    document_url=data["url"],
+                ))
 
-    logger.info(f"Document {data['name']} with {len(pages)} pages was uploaded")  # type: ignore
+            except Exception as exc:
+                os.remove(file_path)
+                query = document_table.delete().where(document_table.c.id == id)
+                await database.execute(query)
+                raise exc
 
-    return UploadDocument(
-        detail="file upload successfully",
-        document_id=id,
-        document_url=data["url"],
-    )
+        except Exception as exc:
+            logger.error(f"Error uploading file {file.filename}: {str(exc)}")
+            results.append(UploadDocument(
+                detail=f"Error uploading file: {str(exc)}",
+                document_id=-1,
+                document_url="",
+            ))
+            continue
+
+    return results
 
 
 @router.get("/{document_id}", response_model=Document)

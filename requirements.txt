@@ -32,6 +32,7 @@ pydantic[email]
 
 # test
 httpx
+aiohttp
 pytest
 pytest-mock
 

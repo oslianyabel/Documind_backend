@@ -6,9 +6,6 @@ from sqlalchemy.sql import func
 
 from config import config
 
-# from sqlalchemy.dialects.postgresql import JSONB
-
-
 metadata = sqlalchemy.MetaData()
 
 document_table = sqlalchemy.Table(
@@ -31,9 +28,7 @@ page_table = sqlalchemy.Table(
         nullable=False,
     ),
     sqlalchemy.Column("content", sqlalchemy.Text, nullable=False),
-    sqlalchemy.Column(
-        "embeddings", sqlalchemy.ARRAY(sqlalchemy.Float)
-    ),  # sqlalchemy.dialects.postgresql.VECTOR(1536)
+    sqlalchemy.Column("embeddings", sqlalchemy.ARRAY(sqlalchemy.Float)),
 )
 
 user_table = sqlalchemy.Table(

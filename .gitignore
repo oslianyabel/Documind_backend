@@ -8,3 +8,4 @@ notes.txt
 *.db
 libros/
 media/
+upload_documents.py
